@@ -1,0 +1,7 @@
+requests
+folium
+airportsdata
+FlightRadarAPI
+streamlit
+streamlit-folium
+streamlit-autorefresh
