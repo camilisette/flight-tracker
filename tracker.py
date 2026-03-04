@@ -319,7 +319,15 @@ def assign_statuses(flights: list[dict]) -> None:
         elif pivot is not None:
             f["status"] = "completed" if i < pivot else "upcoming"
         else:
-            f["status"] = "unknown"
+            # In flight window but no live data: use midpoint heuristic
+            dep = f.get("departure_dt")
+            arr = f.get("arr_dt")
+            if dep and arr:
+                mid = dep + (arr - dep) / 2
+                now_check = now_aware if dep.tzinfo else now_naive
+                f["status"] = "completed" if now_check > mid else "on_ground"
+            else:
+                f["status"] = "unknown"
 
 
 def layover_airport(flights: list[dict]) -> str | None:
@@ -450,11 +458,17 @@ def build_map(flights: list[dict]) -> folium.Map:
             icon=folium.DivIcon(html=_icon_html(heading), icon_size=(32, 32), icon_anchor=(16, 16)),
         ).add_to(m)
 
-    # On ground: icon at GPS position, no rotation
+    # On ground: icon at GPS position (or origin airport if no live data), no rotation
     for f in flights:
         if f.get("status") != "on_ground":
             continue
-        lat, lon = f["latitude"], f["longitude"]
+        if f.get("latitude") is not None:
+            lat, lon = f["latitude"], f["longitude"]
+        else:
+            coords = get_airport_coords(f.get("dest_icao") or "")
+            if not coords:
+                continue
+            lat, lon = coords
         ap_label = airport_label(f.get("dest_icao") or "")
         folium.Marker(
             location=[lat, lon],
