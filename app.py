@@ -10,45 +10,6 @@ import tracker
 
 st.set_page_config(page_title="Flight Tracker", page_icon="✈", layout="wide")
 
-st.markdown("""
-<style>
-/* Blue border on focus, not red */
-div[data-baseweb="input"]:focus-within {
-    border-color: #4A90D9 !important;
-    box-shadow: 0 0 0 1px #4A90D9 !important;
-}
-div[data-baseweb="input"] input:focus {
-    border-color: #4A90D9 !important;
-    box-shadow: none !important;
-}
-div[data-baseweb="base-input"]:focus-within {
-    border-color: #4A90D9 !important;
-    box-shadow: 0 0 0 1px #4A90D9 !important;
-}
-</style>
-""", unsafe_allow_html=True)
-
-
-# ── Password gate ──────────────────────────────────────────────────────────────
-
-def check_password() -> bool:
-    if st.session_state.get("authenticated"):
-        return True
-    st.title("✈ Flight Journey Tracker")
-    with st.form("login", clear_on_submit=True):
-        pwd = st.text_input("Passcode", type="password")
-        submitted = st.form_submit_button("Enter")
-    if submitted:
-        if pwd == st.secrets["PASSCODE"]:
-            st.session_state["authenticated"] = True
-            st.rerun()
-        else:
-            st.error("Incorrect passcode")
-    return False
-
-if not check_password():
-    st.stop()
-
 
 # ── Sidebar ────────────────────────────────────────────────────────────────────
 
