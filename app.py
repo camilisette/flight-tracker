@@ -71,6 +71,8 @@ for f in flights:
     orig                  = tracker.airport_label(f["origin_icao"]) if f.get("origin_icao") else "?"
     dest                  = tracker.airport_label(f["dest_icao"])   if f.get("dest_icao")   else "?"
 
+    estimated   = f.get("position_estimated", False)
+    est_note    = "&nbsp;·&nbsp;<span style='color:#666;font-style:italic'>est. position</span>" if estimated else ""
     st.markdown(
         f"""<div style="
             padding: 10px 14px; margin-bottom: 8px; border-radius: 6px;
@@ -78,7 +80,7 @@ for f in flights:
             font-family: monospace;">
             <span style="font-size:15px; font-weight:bold;">{f.get('display_name', f['callsign'])}</span>
             &nbsp;&nbsp;
-            <span style="color:{color};">{label}</span>
+            <span style="color:{color};">{label}</span>{est_note}
             &nbsp;&nbsp;
             <span style="color:#aaa;">{orig} → {dest}</span>
             <br>
