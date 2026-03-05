@@ -151,12 +151,62 @@ def fetch_route(callsign: str) -> tuple[str, str] | tuple[None, None]:
     return None, None
 
 
+OPENSKY_TOKEN_URL = "https://auth.opensky-network.org/realms/opensky-network/protocol/openid-connect/token"
+
+_opensky_token: dict = {}  # {"access_token": ..., "expires_at": ...}
+
+
+def _opensky_bearer() -> str | None:
+    """Return a valid Bearer token using clientId/clientSecret, with caching."""
+    global _opensky_token
+
+    # Load credentials
+    client_id = client_secret = None
+    try:
+        import streamlit as st
+        client_id     = st.secrets.get("OPENSKY_CLIENT_ID")
+        client_secret = st.secrets.get("OPENSKY_CLIENT_SECRET")
+    except Exception:
+        pass
+    if not client_id:
+        client_id     = os.environ.get("OPENSKY_CLIENT_ID")
+        client_secret = os.environ.get("OPENSKY_CLIENT_SECRET")
+    if not client_id or not client_secret:
+        return None
+
+    # Return cached token if still valid
+    import time
+    if _opensky_token.get("access_token") and time.time() < _opensky_token.get("expires_at", 0):
+        return _opensky_token["access_token"]
+
+    # Fetch new token
+    try:
+        resp = requests.post(OPENSKY_TOKEN_URL, data={
+            "grant_type":    "client_credentials",
+            "client_id":     client_id,
+            "client_secret": client_secret,
+        }, timeout=10)
+        resp.raise_for_status()
+        data = resp.json()
+        _opensky_token = {
+            "access_token": data["access_token"],
+            "expires_at":   time.time() + data.get("expires_in", 3600) - 30,
+        }
+        return _opensky_token["access_token"]
+    except Exception as e:
+        print(f"  [warn] OpenSky token fetch failed: {e}")
+        return None
+
+
 def fetch_flight_state(callsign: str) -> dict | None:
     """Query OpenSky for a specific callsign. Returns state dict or None."""
-    padded = callsign.ljust(8)  # OpenSky pads callsigns to 8 chars
-    params = {"callsign": callsign}
+    params  = {"callsign": callsign}
+    headers = {}
+    token   = _opensky_bearer()
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
     try:
-        resp = requests.get(OPENSKY_URL, params=params, timeout=10)
+        resp = requests.get(OPENSKY_URL, params=params, timeout=10, headers=headers)
         resp.raise_for_status()
         data = resp.json()
     except Exception as e:
