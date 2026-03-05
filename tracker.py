@@ -151,7 +151,7 @@ def fetch_route(callsign: str) -> tuple[str, str] | tuple[None, None]:
     return None, None
 
 
-OPENSKY_TOKEN_URL = "https://auth.opensky-network.org/realms/opensky-network/protocol/openid-connect/token"
+OPENSKY_TOKEN_URL = "https://auth.opensky-network.org/auth/realms/opensky-network/protocol/openid-connect/token"
 
 _opensky_token: dict = {}  # {"access_token": ..., "expires_at": ...}
 _opensky_debug: str = ""   # last error/status message for display
