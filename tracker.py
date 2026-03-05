@@ -384,7 +384,7 @@ def build_map(flights: list[dict]) -> folium.Map:
                 weight=weight,
                 opacity=opacity,
                 dash_array=dash_array,
-                tooltip=f"{f['callsign']} ({status}): {f.get('origin_icao')} → {f.get('dest_icao')}",
+                tooltip=f"{f.get('display_name', f['callsign'])} ({status}): {f.get('origin_icao')} → {f.get('dest_icao')}",
             ).add_to(m)
             dep_str = fmt_local(f.get("departure_dt"), f.get("origin_tz_offset", 0))
             arr_str = fmt_local(f.get("arr_dt"), f.get("dest_tz_offset", 0))
@@ -443,9 +443,10 @@ def build_map(flights: list[dict]) -> folium.Map:
         alt_ft    = round(f["altitude_m"] * 3.28084) if f["altitude_m"] else "?"
         speed_kts = round(f["velocity_ms"] * 1.94384) if f["velocity_ms"] else "?"
         heading   = round(f["heading"]) if f["heading"] else 0
+        name = f.get('display_name', f['callsign'])
         popup_html = f"""
         <div style="font-family: monospace; min-width: 160px;">
-            <b>{f['callsign']}</b> — Airborne<br>
+            <b>{name}</b> — Airborne<br>
             {f.get('origin_icao','?')} → {f.get('dest_icao','?')}<br>
             Altitude: {alt_ft} ft<br>
             Speed: {speed_kts} kts<br>
@@ -454,7 +455,7 @@ def build_map(flights: list[dict]) -> folium.Map:
         folium.Marker(
             location=[lat, lon],
             popup=folium.Popup(popup_html, max_width=220),
-            tooltip=f"{f['callsign']} — {alt_ft} ft",
+            tooltip=f"{name} — {alt_ft} ft",
             icon=folium.DivIcon(html=_icon_html(heading), icon_size=(32, 32), icon_anchor=(16, 16)),
         ).add_to(m)
 
@@ -472,7 +473,7 @@ def build_map(flights: list[dict]) -> folium.Map:
         ap_label = airport_label(f.get("dest_icao") or "")
         folium.Marker(
             location=[lat, lon],
-            tooltip=f"{f['callsign']} — on ground at {ap_label}",
+            tooltip=f"{f.get('display_name', f['callsign'])} — on ground at {ap_label}",
             icon=folium.DivIcon(html=_icon_html(0), icon_size=(32, 32), icon_anchor=(16, 16)),
         ).add_to(m)
 
@@ -486,14 +487,6 @@ def build_map(flights: list[dict]) -> folium.Map:
                 tooltip=f"In layover at {airport_label(layover)}",
                 icon=folium.DivIcon(html=_icon_html(0), icon_size=(32, 32), icon_anchor=(16, 16)),
             ).add_to(m)
-            folium.Marker(
-                location=coords,
-                icon=folium.DivIcon(
-                    html=f'<div style="font-size:11px;color:#ffdd00;font-family:monospace;'
-                         f'white-space:nowrap;margin-top:34px;">⏳ {airport_label(layover)}</div>',
-                    icon_anchor=(0, 0),
-                ),
-            ).add_to(m)
 
     # Legend
     legend_items = ""
@@ -506,10 +499,11 @@ def build_map(flights: list[dict]) -> folium.Map:
         dep_str = fmt_local(f.get("departure_dt"), f.get("origin_tz_offset", 0)) if f.get("departure_dt") else ""
         arr_str = fmt_local(f.get("arr_dt"), f.get("dest_tz_offset", 0)) if f.get("arr_dt") else ""
         times_str = f"{dep_str} → {arr_str}" if dep_str and arr_str else dep_str or arr_str
+        name = f.get("display_name", f["callsign"])
         legend_items += (
             f"<li style='margin:4px 0'>"
             f"<span style='color:{color}'>{icon}</span> "
-            f"<b>{f['callsign']}</b> "
+            f"<b>{name}</b> "
             f"<span style='color:#aaa'>{label}"
             f"{' · ' + route if route else ''}</span>"
             f"{'<br><span style=\"color:#888;font-size:11px;padding-left:14px\">' + times_str + '</span>' if times_str else ''}"
@@ -620,6 +614,7 @@ def parse_and_fetch_flight(raw: str, use_callsign: bool = False) -> dict:
               f"alt={round(state['altitude_m'] * 3.28084) if state['altitude_m'] else '?'} ft")
         if manual_origin: state["origin_icao"] = manual_origin
         if manual_dest:   state["dest_icao"]   = manual_dest
+        state["display_name"]     = flight_raw
         state["flight_date"]      = flight_date
         state["departure_dt"]     = departure_dt
         state["arr_dt"]           = manual_arr_dt or fr24_info.get("arr_dt")
@@ -636,6 +631,7 @@ def parse_and_fetch_flight(raw: str, use_callsign: bool = False) -> dict:
             print(f"  Not found in OpenSky (flight may not be airborne)")
         state = {
             "callsign":        callsign,
+            "display_name":    flight_raw,
             "latitude":        None,
             "longitude":       None,
             "origin_icao":     manual_origin,
