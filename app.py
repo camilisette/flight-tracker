@@ -15,7 +15,7 @@ st.set_page_config(page_title="Flight Tracker", page_icon="✈", layout="wide")
 
 FLIGHTS = [
     "JBU126/KTPA/KJFK/2026-03-04/14:30-05:00/17:45-05:00",
-    "SQ23/KJFK/WSSS/2026-03-04/22:05-05:00/06:00+08:00",
+    "SQ23/KJFK/WSSS/2026-03-04/22:05-05:00/05:21+08:00",
     "SQ914/WSSS/RPLL/2026-03-06/07:40+08:00/11:25+08:00",
 ]
 
