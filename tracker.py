@@ -312,11 +312,15 @@ def assign_statuses(flights: list[dict]) -> None:
     for i, f in enumerate(flights):
         if "status" in f:
             continue  # already set by date logic
+        dep = f.get("departure_dt")
+        arr = f.get("arr_dt")
+        now_check = now_aware if (dep and dep.tzinfo) else now_naive
+        in_window = bool(dep and arr and dep <= now_check <= arr)
         if f.get("latitude") is not None and not f.get("on_ground"):
             f["status"] = "airborne"
-        elif f.get("latitude") is not None and f.get("on_ground"):
+        elif f.get("latitude") is not None and f.get("on_ground") and not in_window:
             f["status"] = "on_ground"
-        elif pivot is not None:
+        elif pivot is not None and not in_window:
             f["status"] = "completed" if i < pivot else "upcoming"
         else:
             # In flight window but no live data: estimate position along great circle
@@ -331,13 +335,14 @@ def assign_statuses(flights: list[dict]) -> None:
                 if origin_coords and dest_coords:
                     pts = great_circle_points(*origin_coords, *dest_coords, n=100)
                     est_lat, est_lon = pts[round(fraction * 100)]
-                    f["latitude"]   = est_lat
-                    f["longitude"]  = est_lon
-                    f["altitude_m"] = None
-                    f["velocity_ms"] = None
-                    f["heading"]    = None
-                    f["on_ground"]  = False
-                    f["status"]     = "airborne"
+                    f["latitude"]        = est_lat
+                    f["longitude"]       = est_lon
+                    f["altitude_m"]      = None
+                    f["velocity_ms"]     = None
+                    f["heading"]         = None
+                    f["on_ground"]       = False
+                    f["status"]          = "airborne"
+                    f["position_estimated"] = True
                 else:
                     f["status"] = "on_ground"
             else:
@@ -457,19 +462,19 @@ def build_map(flights: list[dict]) -> folium.Map:
         alt_ft    = round(f["altitude_m"] * 3.28084) if f["altitude_m"] else "?"
         speed_kts = round(f["velocity_ms"] * 1.94384) if f["velocity_ms"] else "?"
         heading   = round(f["heading"]) if f["heading"] else 0
-        name = f.get('display_name', f['callsign'])
+        name      = f.get('display_name', f['callsign'])
+        estimated = f.get('position_estimated', False)
+        src_note  = "estimated position" if estimated else f"{alt_ft} ft"
         popup_html = f"""
         <div style="font-family: monospace; min-width: 160px;">
             <b>{name}</b> — Airborne<br>
             {f.get('origin_icao','?')} → {f.get('dest_icao','?')}<br>
-            Altitude: {alt_ft} ft<br>
-            Speed: {speed_kts} kts<br>
-            Heading: {heading}°
+            {"<i style='color:#aaa'>Position estimated (no live data)</i>" if estimated else f"Altitude: {alt_ft} ft<br>Speed: {speed_kts} kts<br>Heading: {heading}°"}
         </div>"""
         folium.Marker(
             location=[lat, lon],
             popup=folium.Popup(popup_html, max_width=220),
-            tooltip=f"{name} — {alt_ft} ft",
+            tooltip=f"{name} — {src_note}",
             icon=folium.DivIcon(html=_icon_html(heading), icon_size=(32, 32), icon_anchor=(16, 16)),
         ).add_to(m)
 
