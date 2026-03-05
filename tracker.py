@@ -319,13 +319,27 @@ def assign_statuses(flights: list[dict]) -> None:
         elif pivot is not None:
             f["status"] = "completed" if i < pivot else "upcoming"
         else:
-            # In flight window but no live data: use midpoint heuristic
+            # In flight window but no live data: estimate position along great circle
             dep = f.get("departure_dt")
             arr = f.get("arr_dt")
             if dep and arr:
-                mid = dep + (arr - dep) / 2
                 now_check = now_aware if dep.tzinfo else now_naive
-                f["status"] = "completed" if now_check > mid else "on_ground"
+                fraction = (now_check - dep).total_seconds() / (arr - dep).total_seconds()
+                fraction = max(0.0, min(1.0, fraction))
+                origin_coords = get_airport_coords(f.get("origin_icao") or "")
+                dest_coords   = get_airport_coords(f.get("dest_icao") or "")
+                if origin_coords and dest_coords:
+                    pts = great_circle_points(*origin_coords, *dest_coords, n=100)
+                    est_lat, est_lon = pts[round(fraction * 100)]
+                    f["latitude"]   = est_lat
+                    f["longitude"]  = est_lon
+                    f["altitude_m"] = None
+                    f["velocity_ms"] = None
+                    f["heading"]    = None
+                    f["on_ground"]  = False
+                    f["status"]     = "airborne"
+                else:
+                    f["status"] = "on_ground"
             else:
                 f["status"] = "unknown"
 
