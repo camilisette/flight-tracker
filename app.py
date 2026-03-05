@@ -90,3 +90,9 @@ for f in flights:
         </div>""",
         unsafe_allow_html=True,
     )
+
+with st.expander("Debug"):
+    token = tracker._opensky_bearer()
+    st.write("OpenSky token obtained:", token is not None)
+    for f in flights:
+        st.write(f"{f.get('display_name', f['callsign'])}: lat={f.get('latitude')}, on_ground={f.get('on_ground')}, status={f.get('status')}, estimated={f.get('position_estimated', False)}")
