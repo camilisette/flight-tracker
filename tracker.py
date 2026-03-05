@@ -154,11 +154,13 @@ def fetch_route(callsign: str) -> tuple[str, str] | tuple[None, None]:
 OPENSKY_TOKEN_URL = "https://auth.opensky-network.org/realms/opensky-network/protocol/openid-connect/token"
 
 _opensky_token: dict = {}  # {"access_token": ..., "expires_at": ...}
+_opensky_debug: str = ""   # last error/status message for display
 
 
 def _opensky_bearer() -> str | None:
     """Return a valid Bearer token using clientId/clientSecret, with caching."""
-    global _opensky_token
+    global _opensky_token, _opensky_debug
+    import time
 
     # Load credentials
     client_id = client_secret = None
@@ -166,17 +168,21 @@ def _opensky_bearer() -> str | None:
         import streamlit as st
         client_id     = st.secrets.get("OPENSKY_CLIENT_ID")
         client_secret = st.secrets.get("OPENSKY_CLIENT_SECRET")
-    except Exception:
-        pass
+        _opensky_debug = f"secrets read ok, client_id={'set' if client_id else 'missing'}"
+    except Exception as e:
+        _opensky_debug = f"secrets error: {e}"
     if not client_id:
         client_id     = os.environ.get("OPENSKY_CLIENT_ID")
         client_secret = os.environ.get("OPENSKY_CLIENT_SECRET")
+        if client_id:
+            _opensky_debug = "credentials from env"
     if not client_id or not client_secret:
+        _opensky_debug = _opensky_debug or "no credentials found"
         return None
 
     # Return cached token if still valid
-    import time
     if _opensky_token.get("access_token") and time.time() < _opensky_token.get("expires_at", 0):
+        _opensky_debug = "using cached token"
         return _opensky_token["access_token"]
 
     # Fetch new token
@@ -186,15 +192,17 @@ def _opensky_bearer() -> str | None:
             "client_id":     client_id,
             "client_secret": client_secret,
         }, timeout=10)
+        _opensky_debug = f"token request status: {resp.status_code}"
         resp.raise_for_status()
         data = resp.json()
         _opensky_token = {
             "access_token": data["access_token"],
             "expires_at":   time.time() + data.get("expires_in", 3600) - 30,
         }
+        _opensky_debug = "token fetched ok"
         return _opensky_token["access_token"]
     except Exception as e:
-        print(f"  [warn] OpenSky token fetch failed: {e}")
+        _opensky_debug = f"token fetch error: {e}"
         return None
 
 
