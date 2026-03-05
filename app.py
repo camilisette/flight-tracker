@@ -54,8 +54,8 @@ if not check_password():
 
 FLIGHTS = [
     "JBU126/KTPA/KJFK/2026-03-04/14:30-05:00/17:45-05:00",
-    "SQ23/KJFK/WSSS/2026-03-04/22:55-05:00/06:05+08:00",
-    "SQ916/WSSS/RPLL/2026-03-06/07:40+08:00/11:30+08:00",
+    "SQ23/KJFK/WSSS/2026-03-04/22:05-05:00/06:00+08:00",
+    "SQ914/WSSS/RPLL/2026-03-06/07:40+08:00/11:25+08:00",
 ]
 
 # Auto-refresh every 5 minutes
@@ -115,7 +115,7 @@ for f in flights:
             padding: 10px 14px; margin-bottom: 8px; border-radius: 6px;
             border-left: 4px solid {color}; background: rgba(255,255,255,0.04);
             font-family: monospace;">
-            <span style="font-size:15px; font-weight:bold;">{f['callsign']}</span>
+            <span style="font-size:15px; font-weight:bold;">{f.get('display_name', f['callsign'])}</span>
             &nbsp;&nbsp;
             <span style="color:{color};">{label}</span>
             &nbsp;&nbsp;
