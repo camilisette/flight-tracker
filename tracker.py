@@ -563,9 +563,8 @@ def parse_and_fetch_flight(raw: str, use_callsign: bool = False) -> dict:
         try:
             arr_str   = parts[5]
             candidate = datetime.fromisoformat(f"{parts[3]}T{arr_str}")
-            if departure_dt and candidate < departure_dt:
-                next_day  = (flight_date + timedelta(days=1)).isoformat()
-                candidate = datetime.fromisoformat(f"{next_day}T{arr_str}")
+            while departure_dt and candidate < departure_dt:
+                candidate += timedelta(days=1)
             manual_arr_dt = candidate
         except ValueError:
             print(f"  [warn] Could not parse arrival time '{parts[5]}', ignoring")
